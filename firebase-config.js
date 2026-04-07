@@ -1,6 +1,6 @@
 // Firebase Configuration for Visual Illusion
 // Project: visual-illusion-6d737
-// Database: visual-illusion-6d737-default-rtdb (asia-southeast1)
+// Database: visual-illusion-6d737-default-rtdb.firebaseio.com
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAleUQXLlU-wParLLgi4jdcLCGEjLab0fw",
@@ -9,5 +9,6 @@ const FIREBASE_CONFIG = {
   projectId: "visual-illusion-6d737",
   storageBucket: "visual-illusion-6d737.firebasestorage.app",
   messagingSenderId: "1009073207322",
-  appId: "1:1009073207322:web:7f03464166eed5d8bb39a3"
+  appId: "1:1009073207322:web:7f03464166eed5d8bb39a3",
+  measurementId: "G-4WVVFJKFBD"
 };
