@@ -5,7 +5,7 @@
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyAleUQXLlU-wParLLgi4jdcLCGEjLab0fw",
   authDomain: "visual-illusion-6d737.firebaseapp.com",
-  databaseURL: "https://visual-illusion-6d737-default-rtdb.asia-southeast1.firebasedatabase.app",
+  databaseURL: "https://visual-illusion-6d737-default-rtdb.firebaseio.com",
   projectId: "visual-illusion-6d737",
   storageBucket: "visual-illusion-6d737.firebasestorage.app",
   messagingSenderId: "1009073207322",
