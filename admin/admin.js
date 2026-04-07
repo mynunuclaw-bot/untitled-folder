@@ -41,11 +41,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== Firebase refs =====
     let _storage = null;
-    try {
-        if (typeof firebase !== 'undefined' && firebase.apps.length) {
-            _storage = firebase.storage();
-        }
-    } catch(e) { console.warn('Storage init:', e.message); }
+
+    function ensureStorage() {
+        if (_storage) return _storage;
+        try {
+            if (typeof firebase !== 'undefined' && firebase.apps.length) {
+                _storage = firebase.storage();
+            }
+        } catch(e) { console.warn('Storage init:', e.message); }
+        return _storage;
+    }
+
+    // Initialize storage after Firebase is ready
+    if (typeof firebaseReadyPromise !== 'undefined') {
+        firebaseReadyPromise.then(function(ok) {
+            if (ok) {
+                ensureStorage();
+                console.log('[Admin] Firebase ready, storage:', _storage ? 'OK' : 'FAILED');
+            } else {
+                console.error('[Admin] Firebase not available — products cannot be saved.');
+            }
+        });
+    } else {
+        console.error('[Admin] firebaseReadyPromise not found — app.js may not be loaded.');
+    }
 
     // ===== View Switcher =====
     const navItems = document.querySelectorAll('.nav-item[data-view]');
@@ -328,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== Upload to Firebase Storage =====
     async function uploadImage(file, path) {
+        ensureStorage();
         if (!_storage || !file) return '';
         try {
             const ref = _storage.ref(path);
@@ -588,7 +608,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('add-product-form');
 
     async function saveProduct(statusOverride) {
-        if (typeof PRODUCTS === 'undefined') return;
+        if (typeof PRODUCTS === 'undefined') {
+            showToast('App not loaded. Please refresh the page.', 'red');
+            console.error('[Admin] PRODUCTS is undefined — app.js may not be loaded.');
+            return;
+        }
+
+        // Wait for Firebase to be ready before saving
+        if (typeof firebaseReadyPromise !== 'undefined') {
+            const fbOk = await firebaseReadyPromise;
+            if (!fbOk) {
+                showToast('Firebase is not connected. Cannot save product.', 'red');
+                console.error('[Admin] Firebase not ready — cannot save product.');
+                return;
+            }
+        }
 
         const data = collectFormData();
         if (statusOverride) data.status = statusOverride;
@@ -620,9 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            if (typeof saveProductToFirebase === 'function') {
-                await saveProductToFirebase(data);
-            }
+            await saveProductToFirebase(data);
             
             publishBtn.textContent = origText;
             publishBtn.disabled = false;
@@ -632,7 +664,12 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('products');
         } catch (e) {
             console.error('Firebase save error:', e);
-            showToast('Failed to save product to database. Check console.', 'red');
+            var errMsg = (e && e.message) ? e.message : String(e);
+            if (errMsg.includes('PERMISSION_DENIED')) {
+                showToast('Firebase PERMISSION DENIED. Deploy your database rules: firebase deploy --only database', 'red');
+            } else {
+                showToast('Failed to save: ' + errMsg, 'red');
+            }
             publishBtn.textContent = origText;
             publishBtn.disabled = false;
         }

@@ -557,9 +557,20 @@ function closeContactPopup() {
 // ==================== FIREBASE SYNC ====================
 let _firebaseReady = false;
 let _db = null;
+let _firebaseReadyResolve;
+var firebaseReadyPromise = new Promise(function(resolve) { _firebaseReadyResolve = resolve; });
 
 function initFirebase() {
-  if (typeof firebase === 'undefined') return;
+  if (typeof firebase === 'undefined') {
+    console.error('[Firebase] SDK not loaded! Check script tags.');
+    _firebaseReadyResolve(false);
+    return;
+  }
+  if (typeof FIREBASE_CONFIG === 'undefined') {
+    console.error('[Firebase] Config not loaded! Check firebase-config.js.');
+    _firebaseReadyResolve(false);
+    return;
+  }
   try {
     if (!firebase.apps.length) {
       firebase.initializeApp(FIREBASE_CONFIG);
@@ -567,9 +578,11 @@ function initFirebase() {
     _db = firebase.database();
     _firebaseReady = true;
     console.log('[Firebase] Connected to', FIREBASE_CONFIG.projectId);
+    _firebaseReadyResolve(true);
     listenForProducts();
   } catch(e) {
-    console.warn('[Firebase] Init failed, using local data:', e.message);
+    console.error('[Firebase] Init failed:', e.message);
+    _firebaseReadyResolve(false);
   }
 }
 
@@ -606,7 +619,7 @@ function seedFirebase() {
 
 // Save a single product to Firebase
 function saveProductToFirebase(product) {
-  if (!_db) return Promise.reject('No database connection');
+  if (!_db) return Promise.reject('No database connection. Firebase may not be initialized — check console for errors.');
   return _db.ref('products/' + product.id).set(product);
 }
 
