@@ -606,14 +606,14 @@ function seedFirebase() {
 
 // Save a single product to Firebase
 function saveProductToFirebase(product) {
-  if (!_db) return;
-  _db.ref('products/' + product.id).set(product);
+  if (!_db) return Promise.reject('No database connection');
+  return _db.ref('products/' + product.id).set(product);
 }
 
 // Delete a product from Firebase
 function deleteProductFromFirebase(id) {
-  if (!_db) return;
-  _db.ref('products/' + id).remove();
+  if (!_db) return Promise.reject('No database connection');
+  return _db.ref('products/' + id).remove();
 }
 
 // ==================== INIT ====================

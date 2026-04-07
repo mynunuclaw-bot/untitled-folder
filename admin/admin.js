@@ -619,17 +619,24 @@ document.addEventListener('DOMContentLoaded', () => {
             PRODUCTS.push(data);
         }
 
-        if (typeof saveProductToFirebase === 'function') {
-            saveProductToFirebase(data);
+        try {
+            if (typeof saveProductToFirebase === 'function') {
+                await saveProductToFirebase(data);
+            }
+            
+            publishBtn.textContent = origText;
+            publishBtn.disabled = false;
+
+            showToast(editingProductId ? 'Product updated successfully!' : 'Product published!');
+            resetForm();
+            switchView('products');
+        } catch (e) {
+            console.error('Firebase save error:', e);
+            showToast('Failed to save product to database. Check console.', 'red');
+            publishBtn.textContent = origText;
+            publishBtn.disabled = false;
         }
-
-        publishBtn.textContent = origText;
-        publishBtn.disabled = false;
-
-        showToast(editingProductId ? 'Product updated successfully!' : 'Product published!');
-        resetForm();
-        switchView('products');
-    }
+    };
 
     if (form) {
         form.addEventListener('submit', (e) => {
@@ -645,17 +652,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===== Delete Current Product =====
-    window.deleteCurrentProduct = function() {
+    window.deleteCurrentProduct = async function() {
         if (!editingProductId) return;
-        if (!confirm('Are you sure you want to permanently delete this product?')) return;
         const idx = PRODUCTS.findIndex(x => x.id === editingProductId);
-        if (idx >= 0) {
+        if (idx >= 0 && confirm(`Are you sure you want to delete ${PRODUCTS[idx].name}?`)) {
             const name = PRODUCTS[idx].name;
             PRODUCTS.splice(idx, 1);
-            if (typeof deleteProductFromFirebase === 'function') {
-                deleteProductFromFirebase(editingProductId);
+            
+            try {
+                if (typeof deleteProductFromFirebase === 'function') {
+                    await deleteProductFromFirebase(editingProductId);
+                }
+                showToast(`Deleted ${name}`);
+            } catch(e) {
+                console.error("Delete failed:", e);
+                showToast("Failed to delete from database.", "red");
             }
-            showToast('Deleted: ' + name);
+            
+            renderProductsTable();
             resetForm();
             switchView('products');
         }
