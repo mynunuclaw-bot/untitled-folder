@@ -95,7 +95,21 @@ function badge(text, tone = 'purple') {
   return `<span class="badge badge-${tone}">${text}</span>`;
 }
 
-function getProductImg(cat) {
+function getProductImg(p) {
+  // If p is a string (legacy category usage), convert to object-like lookup
+  if (typeof p === 'string') {
+    const cat = p;
+    if (cat === 'AI Tools') return 'assets/images/thumb_ai_tools.png';
+    if (cat === 'Streaming') return 'assets/images/thumb_streaming.png';
+    if (cat === 'Software Keys') return 'assets/images/thumb_software_keys.png';
+    if (cat === 'Education') return 'assets/images/thumb_education.png';
+    if (cat === 'VPN & Security') return 'assets/images/thumb_vpn_security.png';
+    return 'assets/images/thumb_productivity.png';
+  }
+  // Prioritize uploaded image from admin dashboard
+  if (p.media && p.media.thumbnail) return p.media.thumbnail;
+  // Fallback to category-based image
+  const cat = p.cat || '';
   if (cat === 'AI Tools') return 'assets/images/thumb_ai_tools.png';
   if (cat === 'Streaming') return 'assets/images/thumb_streaming.png';
   if (cat === 'Software Keys') return 'assets/images/thumb_software_keys.png';
@@ -111,7 +125,7 @@ function productCard(p, showQuick = true) {
   return `
   <article class="product-card" onclick="openProduct(${p.id})" style="cursor:pointer">
     <div class="product-thumb">
-      <img class="thumb-img" src="${getProductImg(p.cat)}" alt="${p.name}" style="width:120px;height:120px;object-fit:contain;position:relative;z-index:1;" />
+      <img class="thumb-img" src="${getProductImg(p)}" alt="${p.name}" style="width:120px;height:120px;object-fit:contain;position:relative;z-index:1;" />
       <div class="product-badges">${badgeHtml}</div>
       ${showQuick ? `<div class="product-quick" onclick="event.stopPropagation();openProduct(${p.id})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>` : ''}
     </div>
@@ -121,11 +135,11 @@ function productCard(p, showQuick = true) {
       <div class="product-price-row">
         <div class="product-price">
           <span class="price-from">from</span>
-          <span class="price-amount">$${p.base.toFixed(2)}</span>
+          <span class="price-amount">$${(p.salePrice || p.base || 0).toFixed(2)}</span>
         </div>
-        <span class="product-sold">${p.sold24} sold</span>
+        <span class="product-sold">${p.sold24 || 0} sold</span>
       </div>
-      <button class="product-add" ${!p.stock ? 'disabled' : ''} onclick="event.stopPropagation();${p.stock ? `addToCart(${p.id},'1 Month',${p.base})` : ''}">
+      <button class="product-add" ${!p.stock ? 'disabled' : ''} onclick="event.stopPropagation();${p.stock ? `addToCart(${p.id},'Standard',${p.salePrice || p.base})` : ''}">
         ${p.stock ? 'Add to Cart' : 'Unavailable'}
       </button>
     </div>
@@ -357,13 +371,27 @@ function renderProductDetail() {
   state.activeProduct = p;
   if (!p) return;
 
-  state.prodDuration = state.prodDuration || '1 Month';
-  state.prodType = state.prodType || 'Shared Account';
   state.prodQty = state.prodQty || 1;
 
-  const mult = DURATIONS[state.prodDuration] || 1;
-  const typeAdj = state.prodType === 'Personal Account' ? 1.8 : 1;
-  const price = (p.base * mult * typeAdj).toFixed(2);
+  // Dynamic variants from admin dashboard
+  const hasVariants = p.variants && p.variants.length > 0 && p.variants.some(v => v.name);
+  let price;
+  let variantLabel = '';
+
+  if (hasVariants) {
+    // Initialize selected variant if not set
+    if (!state.selectedVariant || !p.variants.find(v => v.name === state.selectedVariant)) {
+      const defaultVar = p.variants.find(v => v.isDefault) || p.variants[0];
+      state.selectedVariant = defaultVar.name;
+    }
+    const activeVariant = p.variants.find(v => v.name === state.selectedVariant) || p.variants[0];
+    price = (activeVariant.salePrice || activeVariant.price || p.base || 0).toFixed(2);
+    variantLabel = activeVariant.name;
+  } else {
+    // No variants — just use base price
+    price = (p.salePrice || p.base || 0).toFixed(2);
+  }
+
   const related = PRODUCTS.filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 4);
 
   const el = document.getElementById('page-product');
@@ -373,10 +401,40 @@ function renderProductDetail() {
   if (p.badge) badgeHtml += badge(p.badge, p.badge.startsWith('-') ? 'red' : 'purple');
   badgeHtml += badge(p.stock ? 'In Stock' : 'Out of Stock', p.stock ? 'green' : 'red');
 
+  // Use product description from admin if available, otherwise generic
+  const descText = p.shortDesc || p.fullDesc || `${p.name} is a premium digital product delivered with full support. Verified through authorized distribution channels. Every order includes setup instructions and a replacement guarantee.`;
   const tabbedContent = `
     <div style="font-size:14px;color:#64748b;line-height:1.8">
-      ${p.name} is a premium digital subscription delivered with full support. Verified through authorized distribution channels. Every order includes setup instructions and a replacement guarantee.
+      ${descText}
     </div>`;
+
+  // Build variant buttons HTML (only if product has variants)
+  let variantHtml = '';
+  if (hasVariants) {
+    variantHtml = `
+      <div class="var-label">Options</div>
+      <div class="duration-grid">
+        ${p.variants.filter(v => v.name).map(v => {
+          const vPrice = v.salePrice || v.price;
+          const priceTag = vPrice ? ` — $${parseFloat(vPrice).toFixed(2)}` : '';
+          return `<button class="var-btn ${state.selectedVariant === v.name ? 'active' : ''}" onclick="setSelectedVariant('${v.name.replace(/'/g, "\\'")}')"
+          >${v.name}${priceTag}</button>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // Build details table from admin data
+  let detailsHtml = '';
+  if (p.details && p.details.length > 0 && p.details.some(d => d.label)) {
+    detailsHtml = `
+      <div style="margin-top:10px;margin-bottom:20px">
+        ${p.details.filter(d => d.label).map(d => `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px">
+            <span style="color:#64748b;font-weight:500">${d.label}</span>
+            <span style="color:#1e293b;font-weight:600">${d.value}</span>
+          </div>`).join('')}
+      </div>`;
+  }
 
   el.innerHTML = `
     <div class="page-banner">
@@ -387,7 +445,7 @@ function renderProductDetail() {
     <div class="container" style="padding-top:40px;padding-bottom:60px">
       <div class="product-detail-grid">
         <div class="product-image-box">
-          <img src="${getProductImg(p.cat)}" style="width:200px;height:200px;object-fit:contain;position:relative;z-index:1;" alt="${p.name}"/>
+          <img src="${getProductImg(p)}" style="width:200px;height:200px;object-fit:contain;position:relative;z-index:1;" alt="${p.name}"/>
           <div class="detail-badges">${badgeHtml}</div>
         </div>
         <div class="product-detail-info">
@@ -400,29 +458,19 @@ function renderProductDetail() {
             <span style="font-size:13px;color:#059669;font-weight:700">✓ Verified Seller</span>
           </div>
           <div class="hot-notice">
-            <p><strong>${p.watchers} people</strong> watching this right now</p>
-            <p><strong>${p.sold24} sold</strong> in the last 24 hours</p>
+            <p><strong>${p.watchers || 0} people</strong> watching this right now</p>
+            <p><strong>${p.sold24 || 0} sold</strong> in the last 24 hours</p>
           </div>
           <div class="price-box">
             <div class="price-label">Current Price</div>
             <div style="display:flex;align-items:baseline;gap:8px">
               <span class="price-main">$${price}</span>
-              <span class="price-period">/ ${state.prodDuration}</span>
+              ${variantLabel ? `<span class="price-period">/ ${variantLabel}</span>` : ''}
             </div>
-            ${!p.keyOnly ? `<p style="font-size:12px;color:#94a3b8;margin-top:6px">Range: $${p.base.toFixed(2)} – $${(p.base * 9 * 1.8).toFixed(2)}</p>` : ''}
+            ${p.salePrice && p.base > p.salePrice ? `<p style="font-size:12px;color:#94a3b8;margin-top:6px;text-decoration:line-through">$${p.base.toFixed(2)}</p>` : ''}
           </div>
-          ${!p.keyOnly ? `
-          <div class="var-label">Duration</div>
-          <div class="duration-grid">
-            ${Object.keys(DURATIONS).map(d => `<button class="var-btn ${state.prodDuration === d ? 'active' : ''}" onclick="setProdDuration('${d}')">${d}</button>`).join('')}
-          </div>
-          <div class="var-label">Account Type</div>
-          <div class="actype-grid">
-            ${['Shared Account', 'Personal Account'].map(a => `<button class="var-btn ${state.prodType === a ? 'active' : ''}" onclick="setProdType('${a}')">${a}</button>`).join('')}
-          </div>
-          <div style="background:#f5f3ff;border-left:3px solid #7c3aed;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:20px;font-size:12px;color:#4c1d95">
-            <strong>${state.prodType === 'Shared Account' ? 'Shared: 1 active device. Credentials shared across plan members.' : 'Personal: Up to 5 devices. Full account control.'}</strong> Delivery 5–30 min.
-          </div>`: ''}
+          ${detailsHtml}
+          ${variantHtml}
           <div class="qty-row">
             <div class="var-label" style="margin:0">Quantity</div>
             <div class="qty-control">
@@ -432,7 +480,7 @@ function renderProductDetail() {
             </div>
           </div>
           <div class="action-row">
-            <button class="cart-btn" ${!p.stock ? 'disabled' : ''} onclick="addToCart(${p.id},'${state.prodDuration}${p.keyOnly ? '' : ' · ' + state.prodType}',${price})">Add To Cart</button>
+            <button class="cart-btn" ${!p.stock ? 'disabled' : ''} onclick="addToCart(${p.id},'${variantLabel ? variantLabel.replace(/'/g, "\\'") : 'Standard'}',${price})">Add To Cart</button>
             <button class="buy-btn" ${!p.stock ? 'disabled' : ''} onclick="showContactPopup()">Buy Now</button>
             <button class="icon-btn">↗</button>
           </div>
@@ -476,6 +524,7 @@ function renderProductDetail() {
 
 function setProdDuration(d) { state.prodDuration = d; renderProductDetail(); }
 function setProdType(t) { state.prodType = t; renderProductDetail(); }
+function setSelectedVariant(v) { state.selectedVariant = v; renderProductDetail(); }
 function setProdQty(q) { state.prodQty = Math.max(1, q); renderProductDetail(); }
 function switchTab(btn, tabId) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
