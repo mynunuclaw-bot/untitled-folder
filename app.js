@@ -199,9 +199,15 @@ function updateQty(key, delta) {
 function updateCartCount() {
   const count = state.cart.reduce((s, i) => s + i.qty, 0);
   const total = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
-  document.getElementById('cart-count').textContent = count;
-  document.getElementById('cart-count').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('cart-total').textContent = '$' + total.toFixed(2);
+  const countEl = document.getElementById('cart-count');
+  const totalEl = document.getElementById('cart-total');
+  if (countEl) {
+    countEl.textContent = count;
+    countEl.style.display = count > 0 ? 'flex' : 'none';
+  }
+  if (totalEl) {
+    totalEl.textContent = '$' + total.toFixed(2);
+  }
 }
 
 function renderCart() {
