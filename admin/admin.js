@@ -609,7 +609,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveProduct(statusOverride) {
         if (typeof PRODUCTS === 'undefined') {
-            showToast('App not loaded. Please refresh the page.', 'red');
+            showToast('App not loaded. Please refresh the page.', 'error');
             console.error('[Admin] PRODUCTS is undefined — app.js may not be loaded.');
             return;
         }
@@ -618,10 +618,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof firebaseReadyPromise !== 'undefined') {
             const fbOk = await firebaseReadyPromise;
             if (!fbOk) {
-                showToast('Firebase is not connected. Cannot save product.', 'red');
+                showToast('Firebase is not connected. Cannot save product.', 'error');
                 console.error('[Admin] Firebase not ready — cannot save product.');
                 return;
             }
+        }
+
+        // Validate required fields (JS validation instead of HTML required, which breaks with collapsed sections)
+        const nameField = document.getElementById('pf-name');
+        const priceField = document.getElementById('pf-price');
+        if (!nameField || !nameField.value.trim()) {
+            // Expand section 1 if collapsed
+            const sec1 = document.querySelector('.form-card[data-section="1"] .form-section-body');
+            const sec1Header = document.querySelector('.form-card[data-section="1"] .form-section-header');
+            if (sec1 && sec1.classList.contains('collapsed')) { sec1.classList.remove('collapsed'); sec1Header?.classList.remove('collapsed'); }
+            nameField?.focus();
+            showToast('Product name is required.', 'error');
+            return;
+        }
+        if (!priceField || !priceField.value) {
+            const sec2 = document.querySelector('.form-card[data-section="2"] .form-section-body');
+            const sec2Header = document.querySelector('.form-card[data-section="2"] .form-section-header');
+            if (sec2 && sec2.classList.contains('collapsed')) { sec2.classList.remove('collapsed'); sec2Header?.classList.remove('collapsed'); }
+            priceField?.focus();
+            showToast('Product price is required.', 'error');
+            return;
         }
 
         const data = collectFormData();
@@ -666,9 +687,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Firebase save error:', e);
             var errMsg = (e && e.message) ? e.message : String(e);
             if (errMsg.includes('PERMISSION_DENIED')) {
-                showToast('Firebase PERMISSION DENIED. Deploy your database rules: firebase deploy --only database', 'red');
+                showToast('Firebase PERMISSION DENIED. Deploy your database rules: firebase deploy --only database', 'error');
             } else {
-                showToast('Failed to save: ' + errMsg, 'red');
+                showToast('Failed to save: ' + errMsg, 'error');
             }
             publishBtn.textContent = origText;
             publishBtn.disabled = false;
