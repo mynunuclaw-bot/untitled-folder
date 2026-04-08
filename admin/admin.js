@@ -15,13 +15,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loginOverlay) loginOverlay.classList.add('hidden');
     }
     
+    async function hashStr(str) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('login-username').value;
             const pass = document.getElementById('login-password').value;
-            
-            if (user === 'bokaamibokatoi' && pass === 'shakalakabombomvai') {
+            const uHash = await hashStr(user);
+            const pHash = await hashStr(pass);
+
+            if (uHash === '7f0a0e7e1ef79d0f2110ea8564d131b8d95d548c4da79173c5b15963735bde7f' &&
+                pHash === 'b9da97b62dece5fd1b1baedff67958100ec5f1303a3616737073b0aef23c365e') {
                 sessionStorage.setItem('vi_admin_logged_in', 'true');
                 loginOverlay.classList.add('hidden');
                 loginError.style.display = 'none';
