@@ -125,7 +125,7 @@ function productCard(p, showQuick = true) {
   return `
   <article class="product-card" onclick="openProduct(${p.id})" style="cursor:pointer">
     <div class="product-thumb">
-      <img class="thumb-img" src="${getProductImg(p)}" alt="${p.name}" style="width:120px;height:120px;object-fit:contain;position:relative;z-index:1;" />
+      <img class="thumb-img" src="${getProductImg(p)}" alt="${p.name}" style="width:100%;height:100%;object-fit:contain;position:relative;z-index:1;" />
       <div class="product-badges">${badgeHtml}</div>
       ${showQuick ? `<div class="product-quick" onclick="event.stopPropagation();openProduct(${p.id})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div>` : ''}
     </div>
@@ -263,6 +263,11 @@ function renderCart() {
 
 function openCart() { document.getElementById('cart-overlay').classList.add('open'); document.getElementById('cart-drawer').classList.add('open'); }
 function closeCart() { document.getElementById('cart-overlay').classList.remove('open'); document.getElementById('cart-drawer').classList.remove('open'); }
+
+function toggleMobileMenu() {
+  document.getElementById('mobile-nav').classList.toggle('open');
+  document.getElementById('mobile-nav-overlay').classList.toggle('open');
+}
 
 // ==================== NAVIGATION ====================
 function navigate(page) {
@@ -445,7 +450,7 @@ function renderProductDetail() {
     <div class="container" style="padding-top:40px;padding-bottom:60px">
       <div class="product-detail-grid">
         <div class="product-image-box">
-          <img src="${getProductImg(p)}" style="width:200px;height:200px;object-fit:contain;position:relative;z-index:1;" alt="${p.name}"/>
+          <img src="${getProductImg(p)}" style="width:100%;height:100%;object-fit:contain;position:relative;z-index:1;" alt="${p.name}"/>
           <div class="detail-badges">${badgeHtml}</div>
         </div>
         <div class="product-detail-info">
